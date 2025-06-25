@@ -1,0 +1,116 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Tirage au sort équilibré - Foot</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 30px; }
+    h2 { margin-top: 40px; }
+    label { display: block; margin-bottom: 5px; }
+    .joueur { margin-bottom: 5px; }
+    .equipes { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 30px; }
+    .equipe { padding: 10px; border: 1px solid #ccc; border-radius: 10px; width: fit-content; }
+  </style>
+</head>
+<body>
+
+<h1>Tirage au sort pour 2 équipes équilibrées (entre 8 et 10 joueurs par équipe)</h1>
+
+<h2>Liste des joueurs (notes sur 5)</h2>
+<button onclick="toggleSelection()">Tout cocher / décocher</button>
+<div id="liste-joueurs"></div>
+
+<br><br>
+<button onclick="genererEquipes()">🎲 Générer les équipes</button>
+
+<div class="equipes" id="resultats"></div>
+<canvas id="terrain" width="600" height="400" style="border:1px solid #000; margin-top: 30px;"></canvas>
+
+
+<script>
+  const joueursData = atob("W3sibmFtZSI6IlJcdTAwZTlteSIsIm4iOjR9LHsibmFtZSI6IkNvcmVudGluIiwibiI6NX0seyJuYW1lIjoiTGF1cmVudCIsIm4iOjJ9LHsibmFtZSI6Ik5pY2hpdGEiLCJuIjoyfSx7Im5hbWUiOiJNYXR0ZW8iLCJuIjozfSx7Im5hbWUiOiJBbGV4aXMiLCJuIjo1fSx7Im5hbWUiOiJBbnRvIiwibiI6NH0seyJuYW1lIjoiTWFudSIsIm4iOjR9LHsibmFtZSI6IlBvdGVCb2ZDb3JlbnRpbiIsIm4iOjJ9LHsibmFtZSI6Ik1hdGhldSIsIm4iOjV9LHsibmFtZSI6IkRhZG91IiwibiI6NH0seyJuYW1lIjoiQWxpIiwibiI6NH0seyJuYW1lIjoiVmlyZ2lsIiwibiI6NH0seyJuYW1lIjoiTWlja2FlbCIsIm4iOjN9LHsibmFtZSI6IlBvdGVOaWNoaXRhIiwibiI6NX1d");
+
+  const joueurs = JSON.parse(joueursData.replace(/"name"/g, "nom").replace(/"n"/g, "niveau"));
+
+  const listeDiv = document.getElementById('liste-joueurs');
+  joueurs.forEach((joueur, index) => {
+    const div = document.createElement('div');
+    div.className = 'joueur';
+    div.style.display = "flex";
+    div.style.alignItems = "center";
+    div.style.gap = "8px";
+    div.innerHTML = `<input type="checkbox" id="j${index}" checked>
+                     <label style="display: inline;" for="j${index}">${joueur.nom}</label>`;
+    listeDiv.appendChild(div);
+  });
+
+  function genererEquipes() {
+    const joueursActifs = joueurs.filter((_, i) => document.getElementById("j" + i).checked);
+    if (joueursActifs.length < 8 || joueursActifs.length > 10) {
+      alert("Le nombre total de joueurs sélectionnés doit être entre 8 et 10.");
+      return;
+    }
+    joueursActifs.sort(() => Math.random() - 0.5);
+    joueursActifs.sort((a, b) => b.niveau - a.niveau);
+    const equipes = [[], []];
+    for (let i = 0; i < joueursActifs.length; i++) {
+      equipes[i % 2].push(joueursActifs[i]);
+    }
+    const resDiv = document.getElementById("resultats");
+    resDiv.innerHTML = '';
+    equipes.forEach((equipe, idx) => {
+      const bloc = document.createElement("div");
+      bloc.className = "equipe";
+      bloc.innerHTML = `<strong>Équipe ${idx + 1}</strong><ul>${
+        equipe.map(j => `<li>${j.nom}`).join('')
+      }</ul>`;
+      resDiv.appendChild(bloc);
+    });
+    dessinerTerrain(equipes);
+  }
+
+  function dessinerTerrain(equipes) {
+    const canvas = document.getElementById("terrain");
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#28a745";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath(); ctx.moveTo(canvas.width / 2, 0); ctx.lineTo(canvas.width / 2, canvas.height); ctx.stroke();
+    ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height / 2, 40, 0, 2 * Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height / 2, 3, 0, 2 * Math.PI);
+    ctx.fillStyle = "white"; ctx.fill();
+    ctx.strokeRect(0, 100, 60, 200);
+    ctx.strokeRect(canvas.width - 60, 100, 60, 200);
+    const colors = ["blue", "red"];
+    const positions = [
+      [90, 100], [90, 200], [90, 300], [170, 150], [170, 250],
+      [510, 100], [510, 200], [510, 300], [430, 150], [430, 250]
+    ];
+    for (let t = 0; t < equipes.length; t++) {
+      for (let p = 0; p < equipes[t].length; p++) {
+        const [x, y] = positions[t * 5 + p];
+        ctx.beginPath(); ctx.arc(x, y, 20, 0, 2 * Math.PI);
+        ctx.fillStyle = colors[t]; ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "white"; ctx.font = "10px Arial"; ctx.textAlign = "center";
+        ctx.fillText(equipes[t][p].nom, x, y + 4);
+      }
+    }
+  }
+
+  let tousCoches = true;
+  function toggleSelection() {
+    tousCoches = !tousCoches;
+    const total = joueurs.length;
+    for (let i = 0; i < total; i++) {
+      document.getElementById("j" + i).checked = tousCoches;
+    }
+  }
+</script>
+
+
+</body>
+</html>
